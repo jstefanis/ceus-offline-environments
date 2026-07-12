@@ -1,0 +1,49 @@
+# rev513a_env_bootstrap_runtime_r2_cdx_cl
+name: rev513a fetch release assets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Download and verify release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://github.com/jstefanis/ceus-offline-environments/releases/download/rev513a-env-20260712'
+          mkdir -p release-assets
+          cd release-assets
+          assets=(
+            ceus_python311_common_offline_rev513a_r1_cdx_cl.zip
+            ceus_python311_common_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_pyqt5_binding_offline_rev513a_r1_cdx_cl.zip
+            ceus_pyqt5_binding_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_pyside6_binding_offline_rev513a_r1_cdx_cl.zip
+            ceus_pyside6_binding_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_system_deps_ubuntu2404_offline_rev513a_r1_cdx_cl.zip
+            ceus_system_deps_ubuntu2404_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_cpython311_runtime_linux_x86_64_offline_rev513a_r1_cdx_cl.zip
+            ceus_cpython311_runtime_linux_x86_64_offline_rev513a_r1_cdx_cl.zip.sha256
+            CPYTHON311_RUNTIME_MANIFEST_rev513a.md
+            SYSTEM_PACKAGE_MANIFEST_rev513a.md
+            SYSTEM_DEPENDENCIES_rev513a.md
+            RELEASE_MANIFEST_rev513a.md
+            SHA256SUM_rev513a.txt
+          )
+          for asset in "${assets[@]}"; do
+            curl --fail --location --retry 5 --retry-all-errors --output "$asset" "$BASE/$asset"
+          done
+          sha256sum -c SHA256SUM_rev513a.txt
+          for sidecar in *.zip.sha256; do
+            sha256sum -c "$sidecar"
+          done
+          for archive in *.zip; do
+            unzip -t "$archive" > "${archive}.unzip-test.txt"
+          done
+          echo "rev513a release integrity: OK"
