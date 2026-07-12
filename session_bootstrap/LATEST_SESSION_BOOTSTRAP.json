@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "repository": "jstefanis/ceus-offline-environments",
+  "release_tag": "rev513a-env-20260712",
+  "workflow": "Build CEUS rev513a session bootstrap",
+  "run_id": 29178083829,
+  "run_attempt": 1,
+  "artifact_name": "ceus-rev513a-session-bootstrap",
+  "commit_sha": "cd2a31928d0dcde671eac6646fca9c94c9fa80fb",
+  "created_utc": "2026-07-12T03:20:25Z"
+}
