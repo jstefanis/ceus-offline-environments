@@ -1,55 +1,49 @@
 # CEUS rev513a automated session bootstrap
 
-## One-time repository setup
+Revision: `rev513a_env_bootstrap_runtime_r2_cdx_cl`
 
-Commit these files to `jstefanis/ceus-offline-environments`:
+## Repository files
+
+Use these canonical paths:
 
 ```text
 .github/workflows/build_rev513a_session_bootstrap.yml
+.github/workflows/rev513a_fetch_release_assets.yml
 session_bootstrap/bootstrap_ceus_envs.sh
 session_bootstrap/verify_ceus_envs.py
 session_bootstrap/README_SESSION_BOOTSTRAP.md
 ```
 
-Run **Build CEUS rev513a session bootstrap** once from the Actions tab.
+Delete obsolete duplicate workflow files after the canonical workflow is updated.
 
-The workflow will:
+## Release assets
 
-1. Download the 12 authored release assets.
-2. Verify declared SHA-256 values.
-3. Verify all four ZIP files.
-4. Publish an Actions artifact named `ceus-rev513a-session-bootstrap`.
-5. Commit `session_bootstrap/LATEST_SESSION_BOOTSTRAP.json` with the current run ID.
+The release must include five ZIP archives, five ZIP checksum sidecars, the release checksum manifest, and the three manifest documents. The CPython runtime remains a separate artifact so every Actions artifact stays below the connector download limit.
 
-## How a new ChatGPT session restores the environment
+## Deterministic restore behavior
 
-Tell ChatGPT:
+The bootstrap:
 
-```text
-Restore the CEUS rev513a environments from
-jstefanis/ceus-offline-environments using
-session_bootstrap/LATEST_SESSION_BOOTSTRAP.json.
-Download the named workflow artifact, run bootstrap_ceus_envs.sh,
-and verify both PyQt5 and PySide6 environments.
-```
+1. Resolves all five ZIP archives and sidecars.
+2. Verifies every archive before extraction.
+3. Clears prior staging and venv directories.
+4. Extracts common, PyQt5, PySide6, system, and runtime content into separate roots.
+5. Verifies internal wheelhouse manifests.
+6. Rejects binding cross-contamination and `pyqtspinner`.
+7. Builds isolated PyQt5 and PySide6 CPython 3.11 venvs.
+8. Runs `pip check`, Qt offscreen, pyqtgraph, Matplotlib QtAgg, pydicom decoder, WeasyPrint, and pikepdf smoke tests.
 
-The GitHub connector can then:
-
-1. Read `session_bootstrap/LATEST_SESSION_BOOTSTRAP.json`.
-2. Call `fetch_workflow_run_artifacts` using its `run_id`.
-3. Download the matching artifact.
-4. Extract it into the session.
-5. Run:
+Run:
 
 ```bash
 bash bootstrap_ceus_envs.sh /mnt/data/ceus_envs_rev513a <artifact-extraction-root>
 ```
 
-## Resulting activation commands
+Activation:
 
 ```bash
 source /mnt/data/ceus_envs_rev513a/activate_pyqt5.sh
 source /mnt/data/ceus_envs_rev513a/activate_pyside6.sh
 ```
 
-The environments are always separate. `pyqtspinner` is rejected in both. PyQt5 is rejected from the PySide6 environment, and PySide6/Shiboken6 are rejected from the PyQt5 environment.
+The Ubuntu 24.04 `.deb` bundle is preserved as an offline system-dependency artifact. The bootstrap does not install those packages automatically onto a non-Ubuntu host.
