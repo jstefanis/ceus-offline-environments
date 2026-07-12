@@ -1,0 +1,163 @@
+# rev513a_env_bootstrap_runtime_r2_cdx_cl
+name: Build CEUS rev513a session bootstrap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  mirror-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://github.com/jstefanis/ceus-offline-environments/releases/download/rev513a-env-20260712'
+          mkdir -p session_payload/release-assets
+          cd session_payload/release-assets
+          assets=(
+            ceus_python311_common_offline_rev513a_r1_cdx_cl.zip
+            ceus_python311_common_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_pyqt5_binding_offline_rev513a_r1_cdx_cl.zip
+            ceus_pyqt5_binding_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_pyside6_binding_offline_rev513a_r1_cdx_cl.zip
+            ceus_pyside6_binding_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_system_deps_ubuntu2404_offline_rev513a_r1_cdx_cl.zip
+            ceus_system_deps_ubuntu2404_offline_rev513a_r1_cdx_cl.zip.sha256
+            ceus_cpython311_runtime_linux_x86_64_offline_rev513a_r1_cdx_cl.zip
+            ceus_cpython311_runtime_linux_x86_64_offline_rev513a_r1_cdx_cl.zip.sha256
+            CPYTHON311_RUNTIME_MANIFEST_rev513a.md
+            SYSTEM_PACKAGE_MANIFEST_rev513a.md
+            SYSTEM_DEPENDENCIES_rev513a.md
+            RELEASE_MANIFEST_rev513a.md
+            SHA256SUM_rev513a.txt
+          )
+          for asset in "${assets[@]}"; do
+            curl --fail --location --retry 5 --retry-all-errors \
+              --output "$asset" "$BASE/$asset"
+          done
+
+      - name: Verify release checksums and ZIP integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd session_payload/release-assets
+          sha256sum -c SHA256SUM_rev513a.txt | tee release_manifest_hash_check.txt
+          for sidecar in *.zip.sha256; do
+            sha256sum -c "$sidecar"
+          done
+          for archive in *.zip; do
+            unzip -t "$archive" > "${archive}.unzip-test.txt"
+          done
+          find . -maxdepth 1 -type f -printf '%f\t%s bytes\n' | sort > asset_inventory.txt
+          sha256sum * > downloaded_all_sha256.txt
+
+      - name: Copy bootstrap files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p session_payload/bootstrap
+          cp session_bootstrap/bootstrap_ceus_envs.sh session_payload/bootstrap/
+          cp session_bootstrap/verify_ceus_envs.py session_payload/bootstrap/
+          cp session_bootstrap/README_SESSION_BOOTSTRAP.md session_payload/bootstrap/
+          cp session_payload/release-assets/*.md session_payload/bootstrap/
+          cp session_payload/release-assets/*.txt session_payload/bootstrap/
+
+      - name: Upload CPython 3.11 runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceus-rev513a-cpython311-runtime
+          path: |
+            session_payload/release-assets/ceus_cpython311_runtime_linux_x86_64_offline_rev513a_r1_cdx_cl.zip
+            session_payload/release-assets/ceus_cpython311_runtime_linux_x86_64_offline_rev513a_r1_cdx_cl.zip.sha256
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload common artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceus-rev513a-common
+          path: |
+            session_payload/release-assets/ceus_python311_common_offline_rev513a_r1_cdx_cl.zip
+            session_payload/release-assets/ceus_python311_common_offline_rev513a_r1_cdx_cl.zip.sha256
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload PyQt5 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceus-rev513a-pyqt5
+          path: |
+            session_payload/release-assets/ceus_pyqt5_binding_offline_rev513a_r1_cdx_cl.zip
+            session_payload/release-assets/ceus_pyqt5_binding_offline_rev513a_r1_cdx_cl.zip.sha256
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload PySide6 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceus-rev513a-pyside6
+          path: |
+            session_payload/release-assets/ceus_pyside6_binding_offline_rev513a_r1_cdx_cl.zip
+            session_payload/release-assets/ceus_pyside6_binding_offline_rev513a_r1_cdx_cl.zip.sha256
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload system dependency artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceus-rev513a-system-deps
+          path: |
+            session_payload/release-assets/ceus_system_deps_ubuntu2404_offline_rev513a_r1_cdx_cl.zip
+            session_payload/release-assets/ceus_system_deps_ubuntu2404_offline_rev513a_r1_cdx_cl.zip.sha256
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload bootstrap metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceus-rev513a-bootstrap
+          path: session_payload/bootstrap/
+          compression-level: 0
+          retention-days: 30
+
+      - name: Publish latest run metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p session_bootstrap
+          cat > session_bootstrap/LATEST_SESSION_BOOTSTRAP.json <<EOF_METADATA
+          {
+            "schema_version": 3,
+            "repository": "${GITHUB_REPOSITORY}",
+            "release_tag": "rev513a-env-20260712",
+            "workflow": "Build CEUS rev513a session bootstrap",
+            "run_id": ${GITHUB_RUN_ID},
+            "run_attempt": ${GITHUB_RUN_ATTEMPT},
+            "artifact_names": [
+              "ceus-rev513a-cpython311-runtime",
+              "ceus-rev513a-common",
+              "ceus-rev513a-pyqt5",
+              "ceus-rev513a-pyside6",
+              "ceus-rev513a-system-deps",
+              "ceus-rev513a-bootstrap"
+            ],
+            "commit_sha": "${GITHUB_SHA}",
+            "created_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF_METADATA
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add session_bootstrap/LATEST_SESSION_BOOTSTRAP.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update CEUS session bootstrap metadata [skip ci]"
+            git push
+          fi
